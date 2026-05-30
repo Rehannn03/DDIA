@@ -1,19 +1,8 @@
-import Log from './log.js'
+import DB from './db.js'
 
-const log=new Log()
-
-
-const offset=log.append('Hello, world!')
-console.log(offset)
-
-const offset2=log.append('Data appended')
-console.log(offset2)
-
-const data=log.read(offset)
-console.log(data)
+const db=new DB()
+const first=db.set('name', 'John')
+const second=db.set('age', 30)
 
 
-const data2=log.read(offset2)
-console.log(data2)
-
-log.close()
+console.log(db.get('name'))
