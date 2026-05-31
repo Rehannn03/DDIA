@@ -1,12 +1,18 @@
 import Index from './index.js'
 import Log from './log.js'
-
+import fs from 'fs'
 class DB{
     constructor(){
-        this.index=new Index()
+
+        this.index=null
         this.log=new Log()
+        this.init()
     }
 
+    init(){
+        const indexData=fs.readFileSync('index.json','utf-8')
+        this.index=new Index(JSON.parse(indexData))
+    }
 
     set(key, value){
         const {offset,length}=this.log.append(value)
