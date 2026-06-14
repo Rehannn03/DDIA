@@ -1,39 +1,51 @@
 import fs from 'fs'
-
+import Segment from './segment.js'
 
 class Log {
-    constructor(filePath='log.txt'){
-        this.filePath = filePath
-        this.fd=null
+    constructor() {
+        this.segmentId = 1
+        this.activeSegment = null
+        this.MAX_SEGMENT_SIZE = 64
         this.init()
     }
 
-    init(){
-        this.fd = fs.openSync(this.filePath, 'a+')
+    init() {
+        if (!fs.existsSync('segments')) {
+            fs.mkdirSync('segments')
+        }
+        this.activeSegment = new Segment(`segments/segment-${this.segmentId}.log`)
     }
 
-    close(){
-        fs.closeSync(this.fd)
+    rotate() {
+        this.activeSegment.close()
+        this.segmentId++
+        this.activeSegment = new Segment(`segments/segment-${this.segmentId}.log`)
     }
 
-    append(message){
-        const stats=fs.statSync(this.filePath)
-        const offset=stats.size
-        const data=message+'\n'
-        const buffer=Buffer.from(data)
-        fs.writeSync(this.fd, buffer, 0, buffer.length, offset)
+    append(message) {
+        const currentSegmentId = this.segmentId
+        const result = this.activeSegment.append(message)
 
+        if (fs.statSync(this.activeSegment.filePath).size >= this.MAX_SEGMENT_SIZE) {
+            this.rotate()
+        }
 
         return {
-            offset,
-            length:buffer.length
+            segmentId: currentSegmentId,
+            offset: result.offset,
+            length: result.length
         }
     }
 
-    read(offset,length){
-        const buffer=Buffer.alloc(1024)
-        fs.readSync(this.fd, buffer, 0, length, offset)
-        return buffer.toString('utf-8')
+    read(segmentId, offset, length) {
+        if (segmentId === this.segmentId) {
+            return this.activeSegment.read(offset, length)
+        }
+
+        const segment = new Segment(`segments/segment-${segmentId}.log`)
+        const value = segment.read(offset, length)
+        segment.close()
+        return value
     }
 }
 

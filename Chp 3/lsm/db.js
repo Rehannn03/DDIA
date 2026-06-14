@@ -15,17 +15,15 @@ class DB{
     }
 
     set(key, value){
-        const {offset,length}=this.log.append(value)
-        this.index.set(key, {offset,length})
-        
+        const { segmentId, offset, length } = this.log.append(value)
+        this.index.set(key, { segmentId, offset, length })
     }
 
 
     get(key){
         if(this.index.has(key)){
-            const {offset,length}=this.index.get(key)
-            console.log("Offset and length:",offset,length)
-            return this.log.read(offset,length)
+            const { segmentId, offset, length } = this.index.get(key)
+            return this.log.read(segmentId ?? 1, offset, length)
         }
         return null
     }
