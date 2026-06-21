@@ -1,29 +1,46 @@
 import Index from './index.js'
 import Log from './log.js'
+import { parseRecord } from './segment.js'
 import fs from 'fs'
-class DB{
-    constructor(){
 
-        this.index=null
-        this.log=new Log()
-        this.init()
+class DB {
+    constructor() {
+        this.log = new Log()
+
+        let indexData = {}
+        if (fs.existsSync('index.json')) {
+            indexData = JSON.parse(fs.readFileSync('index.json', 'utf-8'))
+        }
+
+        this.index = new Index(indexData)
+
+        const referencedIds = new Set(
+            Object.values(indexData).map((entry) => entry.segmentId)
+        )
+        const segmentRemap = this.log.normalizeSegmentIds(referencedIds)
+        if (segmentRemap.size > 0) {
+            this.index.remapSegmentIds(segmentRemap)
+        }
     }
 
-    init(){
-        const indexData=fs.readFileSync('index.json','utf-8')
-        this.index=new Index(JSON.parse(indexData))
-    }
-
-    set(key, value){
-        const { segmentId, offset, length } = this.log.append(value)
+    set(key, value) {
+        const { segmentId, offset, length, indexUpdates, segmentRemap } = this.log.append(key, value)
         this.index.set(key, { segmentId, offset, length })
+
+        if (indexUpdates) {
+            this.index.setMany(indexUpdates)
+        }
+
+        if (segmentRemap?.size > 0) {
+            this.index.remapSegmentIds(segmentRemap)
+        }
     }
 
-
-    get(key){
-        if(this.index.has(key)){
+    get(key) {
+        if (this.index.has(key)) {
             const { segmentId, offset, length } = this.index.get(key)
-            return this.log.read(segmentId ?? 1, offset, length)
+            const line = this.log.read(segmentId, offset, length)
+            return parseRecord(line).value
         }
         return null
     }

@@ -15,6 +15,23 @@ class Index{
         this.saveIndex()
     }
 
+    setMany(entries){
+        entries.forEach(([key, ptr]) => {
+            this.index.set(key, ptr)
+        })
+        this.saveIndex()
+    }
+
+    remapSegmentIds(idMap){
+        this.index.forEach((ptr) => {
+            const newId = idMap.get(ptr.segmentId)
+            if (newId !== undefined) {
+                ptr.segmentId = newId
+            }
+        })
+        this.saveIndex()
+    }
+
     get(key){
         return this.index.get(key)
     }
